@@ -1,7 +1,6 @@
-// stores/auth.js
+// src/stores/auth.js
 import { defineStore } from 'pinia'
 import { supabase } from '@/supabase'
-import { useUiStore } from './ui'
 
 export const useAuthStore = defineStore('auth', {
    state: () => ({
@@ -11,16 +10,21 @@ export const useAuthStore = defineStore('auth', {
 
    actions: {
       async fetchUser() {
-         const ui = useUiStore() // 💡 Faqat action ichida chaqirish mumkin!
          const { data, error } = await supabase.auth.getUser()
 
          if (error) {
-            ui.showToastMessage("Foydalanuvchini olishda xatolik")
+            console.error('Foydalanuvchi maʼlumotini olishda xatolik:', error)
             return
          }
 
          this.user = data.user
-         this.isAdmin = this.user?.email === 'rasulbekkomilov7@gmail.com'
+         this.isAdmin = this.user?.email === 'rasulbekkomilov7@gmail.com' // Adminni shu yerda aniqlaymiz
+      },
+
+      async logout() {
+         await supabase.auth.signOut()
+         this.user = null
+         this.isAdmin = false
       }
    }
 })

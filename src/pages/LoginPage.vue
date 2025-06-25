@@ -1,5 +1,6 @@
+<!-- src/pages/LoginPage.vue -->
 <template>
-   <div>
+   <div class="login-page">
       <h2>Login</h2>
       <form @submit.prevent="login">
          <input v-model="email" type="email" placeholder="Email" required />
@@ -9,7 +10,7 @@
             <span v-else>Login</span>
          </button>
       </form>
-      <p v-if="error" style="color: red">{{ error }}</p>
+      <p v-if="error" class="error-msg">{{ error }}</p>
    </div>
 </template>
 
@@ -30,6 +31,11 @@ const auth = useAuthStore()
 const ui = useUiStore()
 
 async function login() {
+   if (!email.value || !password.value) {
+      error.value = 'Email va parolni to‘ldiring.'
+      return
+   }
+
    loading.value = true
    ui.setLoading(true)
    error.value = ''
@@ -43,18 +49,40 @@ async function login() {
    ui.setLoading(false)
 
    if (loginError) {
-      ui.showToastMessage("Tarmoqda muammo, qaytadan urining")
+      console.error('Login xatosi:', loginError)
       error.value = loginError.message
+      ui.showToastMessage(loginError.message || "Tizimga kira olmadingiz")
    } else {
       await auth.fetchUser()
-      router.push('/dashboard')
+      router.push('/dashboard') // yoki bosh sahifa
    }
 }
 </script>
 
-<style>
+<style scoped>
+.login-page {
+   max-width: 400px;
+   margin: 0 auto;
+   padding: 2rem;
+}
+
+input {
+   display: block;
+   width: 100%;
+   margin-bottom: 1rem;
+   padding: 0.5rem;
+}
+
 button {
-   color: black;
+   width: 100%;
+   padding: 0.5rem;
+   background-color: #eee;
    border: 1px solid #ccc;
+   cursor: pointer;
+}
+
+.error-msg {
+   color: red;
+   margin-top: 1rem;
 }
 </style>
