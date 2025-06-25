@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 
 // Sahifa komponentlarini import qiling
 import LoginPage from '../pages/LoginPage.vue'
-import SignupPage from '../pages/SignupPage.vue'
+import SignupPage from '../pages/SignUpPage.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
 import AdminPage from '../pages/AdminPage.vue'
 import HomePage from '../pages/HomePage.vue'
