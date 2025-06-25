@@ -1,33 +1,26 @@
+// stores/auth.js
 import { defineStore } from 'pinia'
 import { supabase } from '@/supabase'
+import { useUiStore } from './ui'
 
 export const useAuthStore = defineStore('auth', {
    state: () => ({
       user: null,
       isAdmin: false,
    }),
+
    actions: {
       async fetchUser() {
-         const { data: { user } } = await supabase.auth.getUser()
-         this.user = user
+         const ui = useUiStore() // 💡 Faqat action ichida chaqirish mumkin!
+         const { data, error } = await supabase.auth.getUser()
 
-         // 🔽 YANGI QISM: admin tekshiruv
-         const email = user?.email || ''
-         const role = user?.user_metadata?.role || ''
-
-         this.isAdmin = role === 'admin' || email === 'rasulbekkomilov7@gmail.com'
-
-         if (!user) {
-            ui.showToastMessage("Avval tizimga kiring")
+         if (error) {
+            ui.showToastMessage("Foydalanuvchini olishda xatolik")
             return
          }
 
-      },
-
-      async logout() {
-         await supabase.auth.signOut()
-         this.user = null
-         this.isAdmin = false
+         this.user = data.user
+         this.isAdmin = this.user?.email === 'rasulbekkomilov7@gmail.com'
       }
    }
 })
