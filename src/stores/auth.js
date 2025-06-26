@@ -10,15 +10,36 @@ export const useAuthStore = defineStore('auth', {
 
    actions: {
       async fetchUser() {
-         const { data, error } = await supabase.auth.getUser()
+         try {
+            // Avval sessiyani tekshiramiz
+            const {
+               data: { session },
+               error: sessionError
+            } = await supabase.auth.getSession()
 
-         if (error) {
-            console.error('Foydalanuvchi maʼlumotini olishda xatolik:', error)
-            return
+            if (sessionError || !session) {
+               console.warn('Foydalanuvchi sessiyasi yo‘q')
+               this.user = null
+               this.isAdmin = false
+               return
+            }
+
+            // Endi foydalanuvchini olamiz
+            const {
+               data: { user },
+               error: userError
+            } = await supabase.auth.getUser()
+
+            if (userError) {
+               console.error('Foydalanuvchini olishda xatolik:', userError)
+               return
+            }
+
+            this.user = user
+            this.isAdmin = user?.email === 'rasulbekkomilov7@gmail.com'
+         } catch (err) {
+            console.error('Foydalanuvchi maʼlumotini olishda istisno:', err)
          }
-
-         this.user = data.user
-         this.isAdmin = this.user?.email === 'rasulbekkomilov7@gmail.com' // Adminni shu yerda aniqlaymiz
       },
 
       async logout() {

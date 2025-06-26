@@ -1,13 +1,20 @@
 <template>
-   <NavbarVue />
-   <div>
-      <h2>Welcome, {{ auth.user?.email }}</h2>
-      <p>This is the user dashboard.</p>
+   <Navbar />
+   <div class="dashboard">
+      <h1>Dashboard</h1>
+      <p>Bu sahifa faqat ro‘yxatdan o‘tgan foydalanuvchilar uchun.</p>
    </div>
 </template>
 
 <script setup>
-import NavbarVue from '@/components/Navbar.vue';
-import { useAuthStore } from '@/stores/auth'
-const auth = useAuthStore()
+import Navbar from '@/components/Navbar.vue';
+
+// Bu sahifa protected route orqali himoyalangan
 </script>
+
+<style scoped>
+.dashboard {
+   color: white;
+   padding: 2rem;
+}
+</style>

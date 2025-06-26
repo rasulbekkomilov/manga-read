@@ -1,41 +1,39 @@
 <template>
-   <div class="admin">
-      <h2>Admin Panel</h2>
-      <MangaForm @manga-added="fetchMangas" />
-      <hr />
-      <div v-for="manga in mangas" :key="manga.id" class="manga-item">
-         <h3>{{ manga.title }}</h3>
-         <p>{{ manga.description }}</p>
-         <ChapterForm :mangaId="manga.id" />
+   <div class="admin-panel">
+      <h1>Admin Panel</h1>
+      <div class="button-group">
+         <router-link to="/admin/manga" class="admin-button">📘 Manga Boshqaruvi</router-link>
+         <router-link to="/admin/chapters" class="admin-button">📂 Boblar (Chapters)</router-link>
       </div>
    </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { supabase } from '@/supabase'
-import MangaForm from '@/components/MangaForm.vue'
-import ChapterForm from '@/components/ChapterForm.vue'
-
-const mangas = ref([])
-
-async function fetchMangas() {
-   const { data, error } = await supabase.from('manga').select('*')
-   if (!error) mangas.value = data
-}
-
-onMounted(fetchMangas)
-</script>
-
 <style scoped>
-.admin {
+.admin-panel {
+   max-width: 600px;
+   margin: auto;
    padding: 2rem;
+   text-align: center;
 }
 
-.manga-item {
-   margin-top: 2rem;
-   border: 1px solid #ccc;
+.button-group {
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+}
+
+.admin-button {
    padding: 1rem;
-   border-radius: 6px;
+   background-color: #eee;
+   border: 1px solid #ccc;
+   text-decoration: none;
+   color: black;
+   font-weight: bold;
+   border-radius: 8px;
+   transition: all 0.3s ease;
+}
+
+.admin-button:hover {
+   background-color: #ddd;
 }
 </style>

@@ -42,7 +42,7 @@ async function login() {
 
    const { error: loginError } = await supabase.auth.signInWithPassword({
       email: email.value,
-      password: password.value,
+      password: password.value
    })
 
    loading.value = false
@@ -54,9 +54,10 @@ async function login() {
       ui.showToastMessage(loginError.message || "Tizimga kira olmadingiz")
    } else {
       await auth.fetchUser()
-      router.push('/dashboard') // yoki bosh sahifa
+      router.push('/dashboard')
    }
 }
+
 </script>
 
 <style scoped>

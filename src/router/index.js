@@ -1,12 +1,16 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// Sahifa komponentlarini import qiling
 import LoginPage from '../pages/LoginPage.vue'
 import SignupPage from '../pages/SignUpPage.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
 import AdminPage from '../pages/AdminPage.vue'
 import HomePage from '../pages/HomePage.vue'
+import MangaManage from '../pages/MangaManage.vue'
+import ChapterManage from '../pages/ChapterManage.vue'
+import ChapterRead from '../pages/ChapterRead.vue'
+import MangaDetail from '../pages/MangaDetail.vue'
 
 const routes = [
    {
@@ -26,7 +30,6 @@ const routes = [
    },
    {
       path: '/dashboard',
-      name: 'Dashboard',
       component: DashboardPage,
       meta: { requiresAuth: true }
    },
@@ -35,6 +38,26 @@ const routes = [
       name: 'Admin',
       component: AdminPage,
       meta: { requiresAuth: true, requiresAdmin: true }
+   },
+   {
+      path: '/admin/manga',
+      component: MangaManage,
+      meta: { requiresAuth: true, requiresAdmin: true }
+   },
+   {
+      path: '/admin/chapters',
+      component: ChapterManage,
+      meta: { requiresAuth: true, requiresAdmin: true }
+   },
+   {
+      path: '/read/:mangaId/:chapterId',
+      component: ChapterRead,
+      meta: { requiresAuth: true }
+   },
+   {
+      path: '/series/:mangaId/:slug',
+      component: MangaDetail,
+      meta: { requiresAuth: true } // bu ham faqat ro‘yxatdan o‘tganlar uchun bo‘lsin
    }
 ]
 
@@ -43,12 +66,12 @@ const router = createRouter({
    routes
 })
 
-// Navigation guard
+// 🔐 Navigation Guard
 router.beforeEach(async (to, from, next) => {
    const auth = useAuthStore()
 
+   // Faqat kerak bo‘lsa userni fetch qilamiz
    if (!auth.user) {
-      // Foydalanuvchi ma'lumotlari hali olinmagan bo‘lishi mumkin
       await auth.fetchUser()
    }
 
@@ -56,12 +79,14 @@ router.beforeEach(async (to, from, next) => {
    const isAdmin = auth.isAdmin
 
    if (to.meta.requiresAuth && !isLoggedIn) {
-      next('/login')
-   } else if (to.meta.requiresAdmin && !isAdmin) {
-      next('/dashboard') // oddiy user admin panelga kira olmaydi
-   } else {
-      next()
+      return next('/login')
    }
+
+   if (to.meta.requiresAdmin && !isAdmin) {
+      return next('/dashboard')
+   }
+
+   next()
 })
 
 export default router

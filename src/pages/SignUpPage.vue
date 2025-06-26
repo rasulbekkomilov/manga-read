@@ -7,6 +7,7 @@
          <button type="submit">Signup</button>
       </form>
       <p v-if="error" style="color: red">{{ error }}</p>
+      <p>Agar allaqachon ro'yhatdan o'tkan bo'lsangiz <RouterLink to="/login">Kirish sahifasiga o'tish</RouterLink></p>
    </div>
 </template>
 
