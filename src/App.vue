@@ -1,4 +1,5 @@
 <template>
+  <Navbar />
   <div>
     <Toast />
     <div v-if="ui.loading" class="page-loading">
@@ -12,6 +13,7 @@
 import Toast from '@/components/Toast.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { useUiStore } from '@/stores/ui'
+import Navbar from './components/Navbar.vue';
 
 const ui = useUiStore()
 </script>

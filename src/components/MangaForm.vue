@@ -7,7 +7,7 @@
       <input v-model="status" placeholder="Holat (ongoing/completed)" required />
       <input v-model="coverUrl" placeholder="Cover rasm URL manzili" required />
 
-      <button type="submit">Qo‘shish</button>
+      <button type="submit">Qo'shish</button>
    </form>
 </template>
 

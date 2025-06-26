@@ -1,5 +1,4 @@
 <template>
-   <Navbar />
    <div class="home">
       <div class="manga-list">
          <router-link v-for="manga in mangas" :key="manga.id" :to="`/series/${manga.id}/${slugify(manga.title)}`"
@@ -14,7 +13,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
-import Navbar from '../components/Navbar.vue';
+
 
 const mangas = ref([])
 
