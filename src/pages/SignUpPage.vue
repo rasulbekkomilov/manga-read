@@ -1,62 +1,16 @@
-<!-- <template>
-   <div>
-      <h2>Sign Up</h2>
-      <form @submit.prevent="signup">
-         <input v-model="email" type="email" placeholder="Email" required />
-         <input v-model="password" type="password" placeholder="Password" required />
-         <button type="submit">Signup</button>
-      </form>
-      <p v-if="error" style="color: red">{{ error }}</p>
-      <p>Agar allaqachon ro'yhatdan o'tkan bo'lsangiz <RouterLink to="/login">Kirish sahifasiga o'tish</RouterLink>
-      </p>
-   </div>
-</template>
-
-<script setup>
-import { ref } from 'vue'
-import { supabase } from '@/supabase'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-
-const router = useRouter()
-const auth = useAuthStore()
-
-const email = ref('')
-const password = ref('')
-const error = ref('')
-
-async function signup() {
-   const { error: signupError } = await supabase.auth.signUp({
-      email: email.value,
-      password: password.value,
-      options: {
-         data: { role: 'user' } // oddiy user
-      }
-   })
-
-   if (signupError) {
-      error.value = signupError.message
-   } else {
-      await auth.fetchUser()
-      router.push('/dashboard')
-   }
-}
-</script> -->
-
 <template>
    <div class="auth-container">
       <div class="auth-card">
          <h2>Ro‘yxatdan o‘tish</h2>
-         <form @submit.prevent="signup">
+         <form @submit.prevent="handleSignup">
             <input v-model="email" type="email" placeholder="Email" required />
             <input v-model="password" type="password" placeholder="Parol" required />
             <button type="submit" :disabled="loading">
-               <span v-if="loading">Yuklanmoqda...</span>
-               <span v-else>Ro‘yxatdan o‘tish</span>
+               {{ loading ? 'Yuklanmoqda...' : "Ro'yxatdan o'tish" }}
             </button>
             <p v-if="error" class="error-msg">{{ error }}</p>
          </form>
-         <router-link to="/login" class="switch-link">Allaqachon hisobingiz bormi? Kirish</router-link>
+         <router-link to="/login" class="switch-link">Hisob bormi? Kirish</router-link>
       </div>
    </div>
 </template>
@@ -65,16 +19,20 @@ async function signup() {
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/supabase'
+import { useAuthStore } from '@/stores/auth'
 
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
+
+const auth = useAuthStore()
 const router = useRouter()
 
-const signup = async () => {
+async function handleSignup() {
    loading.value = true
    error.value = ''
+
    const { error: signupError } = await supabase.auth.signUp({
       email: email.value,
       password: password.value
@@ -85,13 +43,13 @@ const signup = async () => {
    if (signupError) {
       error.value = signupError.message
    } else {
-      router.push('/login')
+      await auth.fetchUser()
+      window.location.href = '/dashboard'
    }
 }
 </script>
 
 <style scoped>
-/* Bir xil style LoginPage.vue bilan */
 .auth-container {
    display: flex;
    justify-content: center;

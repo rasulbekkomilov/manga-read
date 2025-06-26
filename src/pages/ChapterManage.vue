@@ -1,33 +1,49 @@
 <template>
-   <div class="chapter-form">
-      <h2>📥 Bob Yuklash</h2>
+   <div class="chapter-manage">
+      <h1>📄 Boblarni boshqarish</h1>
 
-      <form @submit.prevent="submitChapter">
-         <div>
-            <label>Manga tanlang:</label>
-            <select v-model="selectedMangaId" required>
-               <option disabled value="">-- Manga tanlang --</option>
-               <option v-for="m in mangas" :key="m.id" :value="m.id">
-                  {{ m.title }}
+      <form @submit.prevent="addChapter" class="chapter-form">
+         <label>
+            Manga:
+            <select v-model="newChapter.manga_id" required>
+               <option value="" disabled selected>Tanlang</option>
+               <option v-for="manga in mangaList" :key="manga.id" :value="manga.id">
+                  {{ manga.title }}
                </option>
             </select>
-         </div>
+         </label>
 
-         <div>
-            <label>Bob raqami:</label>
-            <input v-model="chapterNumber" type="number" required />
-         </div>
+         <label>
+            Bob raqami:
+            <input type="number" v-model="newChapter.number" required />
+         </label>
 
-         <div class="pages-section">
-            <label>Sahifalar:</label>
-            <div v-for="(url, index) in pages" :key="index" class="page-input">
-               <input v-model="pages[index]" type="text" :placeholder="`Sahifa ${index + 1} URL`" required />
+         <div class="page-list">
+            <label>Rasm URLlari (5ta majburiy):</label>
+            <div v-for="(page, index) in newChapter.pages" :key="index">
+               <input type="url" v-model="newChapter.pages[index]" placeholder="Rasm URL" required />
             </div>
-            <button type="button" @click="addPage" class="add-page-btn">➕ Yana sahifa qo‘shish</button>
+
+            <button v-if="newChapter.pages.length < 20" type="button" class="add-page-btn" @click="addPageField">
+               ➕ Qo‘shimcha sahifa
+            </button>
          </div>
 
-         <button type="submit" class="submit-btn">✅ Yuklash</button>
+         <button class="submit-btn" type="submit">➕ Bob qo‘shish</button>
       </form>
+
+      <hr />
+
+      <div class="chapter-list">
+         <h2>🗂️ Mavjud boblar</h2>
+         <div v-if="chapters.length === 0" class="empty">Boblar hali mavjud emas.</div>
+         <ul>
+            <li v-for="chapter in chapters" :key="chapter.id">
+               <strong>{{ getMangaTitle(chapter.manga_id) }}</strong> - Bob {{ chapter.number }}
+               <button @click="deleteChapter(chapter.id)">🗑️ O‘chirish</button>
+            </li>
+         </ul>
+      </div>
    </div>
 </template>
 
@@ -35,102 +51,168 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
 
-const selectedMangaId = ref('')
-const chapterNumber = ref('')
-const pages = ref(['', '', '', '', '']) // Default 5 ta input
-const mangas = ref([])
+const mangaList = ref([])
+const chapters = ref([])
 
-onMounted(async () => {
-   const { data, error } = await supabase.from('manga').select('id, title')
-   if (!error) mangas.value = data
+const newChapter = ref({
+   manga_id: '',
+   number: '',
+   pages: ['', '', '', '', ''] // 5ta boshlang‘ich input
 })
 
-function addPage() {
-   pages.value.push('')
+// Mangalarni olish
+async function fetchManga() {
+   const { data, error } = await supabase.from('manga').select('id, title')
+   if (!error) mangaList.value = data
 }
 
-async function submitChapter() {
-   if (!selectedMangaId.value || !chapterNumber.value || pages.value.some(p => !p)) {
-      alert('Iltimos, barcha maydonlarni to‘ldiring.')
-      return
-   }
+// Boblarni olish
+async function fetchChapters() {
+   const { data } = await supabase
+      .from('chapters')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-   const { error } = await supabase.from('chapters').insert({
-      manga_id: selectedMangaId.value,
-      number: chapterNumber.value,
-      pages: pages.value
-   })
+   chapters.value = data || []
+}
 
-   if (error) {
-      console.error('Bobni yuklashda xatolik:', error)
-      alert('Xatolik yuz berdi')
-   } else {
-      alert('Bob muvaffaqiyatli yuklandi!')
-      // Tozalash
-      selectedMangaId.value = ''
-      chapterNumber.value = ''
-      pages.value = ['', '', '', '', '']
+// Bob qo‘shish
+async function addChapter() {
+   const { error } = await supabase.from('chapters').insert([newChapter.value])
+   if (!error) {
+      await fetchChapters()
+      resetForm()
    }
 }
+
+// Bob o‘chirish
+async function deleteChapter(id) {
+   await supabase.from('chapters').delete().eq('id', id)
+   await fetchChapters()
+}
+
+// Qo‘shimcha sahifa inputi
+function addPageField() {
+   if (newChapter.value.pages.length < 20) {
+      newChapter.value.pages.push('')
+   }
+}
+
+// Manga nomini ID orqali olish
+function getMangaTitle(id) {
+   const manga = mangaList.value.find(m => m.id === id)
+   return manga ? manga.title : 'Noma’lum'
+}
+
+// Formani tozalash
+function resetForm() {
+   newChapter.value = {
+      manga_id: '',
+      number: '',
+      pages: ['', '', '', '', '']
+   }
+}
+
+onMounted(async () => {
+   await fetchManga()
+   await fetchChapters()
+})
 </script>
 
 <style scoped>
+.chapter-manage {
+   max-width: 850px;
+   margin: 2rem auto;
+   padding: 1rem;
+   font-family: 'Segoe UI', sans-serif;
+}
+
 .chapter-form {
-   max-width: 600px;
-   margin: auto;
-   background: #fff;
-   padding: 2rem;
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+   background: #f8f9fc;
+   padding: 1.5rem;
    border-radius: 10px;
-   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
 }
 
-label {
-   display: block;
-   margin-top: 1rem;
+.chapter-form label {
+   display: flex;
+   flex-direction: column;
    font-weight: 500;
+   color: #333;
 }
 
-input,
-select {
-   width: 100%;
-   padding: 0.5rem;
+.chapter-form input,
+.chapter-form select {
+   padding: 0.6rem;
    margin-top: 0.3rem;
+   border-radius: 6px;
    border: 1px solid #ccc;
-   border-radius: 5px;
 }
 
-.pages-section {
-   margin-top: 1rem;
-}
-
-.page-input {
+.page-list input {
    margin-bottom: 0.5rem;
 }
 
 .add-page-btn {
-   background-color: #f0f0f0;
+   background: #e0f0ff;
    border: none;
-   padding: 0.4rem 0.8rem;
+   padding: 0.5rem 1rem;
+   border-radius: 6px;
    cursor: pointer;
-   border-radius: 5px;
    margin-top: 0.5rem;
+   transition: background 0.3s;
 }
 
 .add-page-btn:hover {
-   background-color: #e0e0e0;
+   background: #d0e7ff;
 }
 
 .submit-btn {
-   margin-top: 2rem;
-   padding: 0.6rem 1.2rem;
-   background-color: #4caf50;
+   background: #4caf50;
    color: white;
    border: none;
+   padding: 0.75rem;
    border-radius: 6px;
+   font-size: 1rem;
    cursor: pointer;
 }
 
 .submit-btn:hover {
-   background-color: #45a049;
+   background: #45a045;
+}
+
+.chapter-list {
+   margin-top: 2rem;
+}
+
+.chapter-list ul {
+   list-style: none;
+   padding: 0;
+}
+
+.chapter-list li {
+   padding: 0.75rem;
+   background: #f1f3f5;
+   margin-bottom: 0.5rem;
+   border-radius: 6px;
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+}
+
+.chapter-list button {
+   background: transparent;
+   border: none;
+   color: red;
+   font-size: 1.1rem;
+   cursor: pointer;
+}
+
+.empty {
+   color: #777;
+   font-style: italic;
 }
 </style>

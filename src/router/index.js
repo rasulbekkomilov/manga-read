@@ -13,24 +13,13 @@ import ChapterRead from '../pages/ChapterRead.vue'
 import MangaDetail from '../pages/MangaDetail.vue'
 
 const routes = [
-   {
-      path: '/',
-      name: 'Home',
-      component: HomePage
-   },
-   {
-      path: '/login',
-      name: 'Login',
-      component: LoginPage
-   },
-   {
-      path: '/signup',
-      name: 'Signup',
-      component: SignupPage
-   },
+   { path: '/', name: 'Home', component: HomePage },
+   { path: '/login', name: 'Login', component: LoginPage },
+   { path: '/signup', name: 'Signup', component: SignupPage },
    {
       path: '/dashboard',
       component: DashboardPage,
+      meta: { requiresAuth: true, requiresAdmin: true }
    },
    {
       path: '/admin',
@@ -48,32 +37,31 @@ const routes = [
       component: ChapterManage,
       meta: { requiresAuth: true, requiresAdmin: true }
    },
-   {
-      path: '/read/:mangaId/:chapterId',
-      component: ChapterRead,
-   },
-   {
-      path: '/series/:mangaId/:slug',
-      component: MangaDetail,
-   }
+   { path: '/read/:mangaId/:chapterId', component: ChapterRead },
+   { path: '/series/:mangaId/:slug', component: MangaDetail },
 ]
 
 const router = createRouter({
    history: createWebHistory(),
-   routes
+   routes,
 })
 
 // 🔐 Navigation Guard
+// src/router/index.js
 router.beforeEach(async (to, from, next) => {
    const auth = useAuthStore()
 
-   // Faqat kerak bo‘lsa userni fetch qilamiz
    if (!auth.user) {
       await auth.fetchUser()
    }
 
    const isLoggedIn = !!auth.user
    const isAdmin = auth.isAdmin
+
+   // Kirgan user login/signup sahifasiga bormasligi kerak
+   if (isLoggedIn && (to.path === '/login' || to.path === '/signup')) {
+      return next('/dashboard')
+   }
 
    if (to.meta.requiresAuth && !isLoggedIn) {
       return next('/login')

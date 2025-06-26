@@ -1,22 +1,17 @@
+// stores/ui.js
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
-export const useUiStore = defineStore('ui', {
-   state: () => ({
-      loading: false,
-      toastMessage: '',
-      showToast: false,
-   }),
-   actions: {
-      setLoading(value) {
-         this.loading = value
-      },
-      showToastMessage(message) {
-         this.toastMessage = message
-         this.showToast = true
-         setTimeout(() => {
-            this.showToast = false
-            this.toastMessage = ''
-         }, 5000) // 5 sekund
-      }
+export const useUiStore = defineStore('ui', () => {
+   const loading = ref(false)
+
+   function setLoading(val) {
+      loading.value = val
    }
+
+   function showToastMessage(message) {
+      alert(message) // yoki bu yerga o'z toast komponentingizni chaqiring
+   }
+
+   return { loading, setLoading, showToastMessage }
 })
