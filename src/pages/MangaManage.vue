@@ -1,127 +1,153 @@
 <template>
-   <div class="manga-form">
-      <h2>Yangi Manga Qo'shish</h2>
-      <form @submit.prevent="addManga">
-         <label>
-            Manga nomi:
-            <input v-model="title" type="text" required />
-         </label>
+   <div class="manga-manage">
+      <h2>📘 Manga Boshqaruvi</h2>
 
-         <label>
-            Cover URL (rasm manzili):
-            <input v-model="coverUrl" type="url" required />
-         </label>
-
-         <label>
-            Status:
-            <select v-model="status" required>
-               <option disabled value="">Tanlang</option>
-               <option value="ongoing">Ongoing</option>
-               <option value="completed">Completed</option>
-               <option value="translating">Being Translated</option>
-            </select>
-         </label>
-
-         <button type="submit" :disabled="loading">
-            <span v-if="loading">Yuklanmoqda...</span>
-            <span v-else>Qo'shish</span>
-         </button>
+      <form @submit.prevent="submitForm" class="manga-form">
+         <input v-model="form.title" type="text" placeholder="Manga nomi" required />
+         <textarea v-model="form.description" placeholder="Manga tavsifi"></textarea>
+         <input v-model="form.cover_url" type="text" placeholder="Cover URL" required />
+         <select v-model="form.status">
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+         </select>
+         <button type="submit">{{ editingId ? 'Saqlash' : 'Qo‘shish' }}</button>
       </form>
 
-      <p v-if="message" class="success">{{ message }}</p>
-      <p v-if="error" class="error">{{ error }}</p>
+      <div class="manga-list">
+         <h3>📚 Mavjud Mangalar</h3>
+         <ul>
+            <li v-for="manga in mangas" :key="manga.id">
+               <div>
+                  <strong>{{ manga.title }}</strong> — <small>{{ manga.status }}</small>
+               </div>
+               <div class="actions">
+                  <button @click="editManga(manga)">✏️</button>
+                  <button @click="deleteManga(manga.id)">🗑</button>
+               </div>
+            </li>
+         </ul>
+      </div>
    </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
 
-const title = ref('')
-const coverUrl = ref('')
-const status = ref('')
-const message = ref('')
-const error = ref('')
-const loading = ref(false)
+const mangas = ref([])
+const editingId = ref(null)
+const form = ref({
+   title: '',
+   description: '',
+   cover_url: '',
+   status: 'ongoing',
+})
 
-async function addManga() {
-   loading.value = true
-   message.value = ''
-   error.value = ''
+async function fetchMangas() {
+   const { data, error } = await supabase.from('manga').select('*').order('created_at', { ascending: false })
+   if (!error) mangas.value = data
+}
 
-   const { data, err } = await supabase.from('manga').insert([
-      {
-         title: title.value,
-         cover_url: coverUrl.value,
-         status: status.value,
-      },
-   ])
+async function submitForm() {
+   if (!form.value.title || !form.value.cover_url) return
 
-   loading.value = false
-
-   if (err) {
-      error.value = 'Xatolik yuz berdi: ' + err.message
+   if (editingId.value) {
+      // Update
+      await supabase.from('manga').update(form.value).eq('id', editingId.value)
+      editingId.value = null
    } else {
-      message.value = 'Manga muvaffaqiyatli qoshildi!'
-      title.value = ''
-      coverUrl.value = ''
-      status.value = ''
+      // Insert
+      await supabase.from('manga').insert([form.value])
+   }
+
+   await fetchMangas()
+   resetForm()
+}
+
+function resetForm() {
+   form.value = {
+      title: '',
+      description: '',
+      cover_url: '',
+      status: 'ongoing',
+   }
+   editingId.value = null
+}
+
+function editManga(manga) {
+   form.value = { ...manga }
+   editingId.value = manga.id
+}
+
+async function deleteManga(id) {
+   const confirmDelete = confirm('Haqiqatan ham o‘chirmoqchimisiz?')
+   if (confirmDelete) {
+      await supabase.from('manga').delete().eq('id', id)
+      await fetchMangas()
    }
 }
+
+onMounted(fetchMangas)
 </script>
 
 <style scoped>
+.manga-manage {
+   max-width: 800px;
+   margin: 2rem auto;
+   padding: 2rem;
+   background: #fff;
+   border-radius: 12px;
+   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+   font-family: sans-serif;
+}
+
 .manga-form {
-   max-width: 400px;
-   margin: auto;
-   background: #1a1a1a;
-   padding: 20px;
-   border-radius: 10px;
-   color: #fff;
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+   margin-bottom: 2rem;
 }
 
-.manga-form h2 {
-   text-align: center;
-   margin-bottom: 1rem;
+.manga-form input,
+.manga-form textarea,
+.manga-form select {
+   padding: 0.5rem;
+   border: 1px solid #ccc;
+   border-radius: 6px;
 }
 
-label {
-   display: block;
-   margin-bottom: 1rem;
-}
-
-input,
-select {
-   width: 100%;
-   padding: 8px;
-   background: #2a2a2a;
-   border: 1px solid #555;
-   border-radius: 4px;
-   color: white;
-}
-
-button {
-   width: 100%;
-   padding: 10px;
-   background-color: #4caf50;
+.manga-form button {
+   background: #4a90e2;
    color: white;
    border: none;
-   border-radius: 5px;
+   padding: 0.6rem;
    cursor: pointer;
+   border-radius: 6px;
+   transition: background 0.2s;
 }
 
-button:disabled {
-   background-color: #888;
-   cursor: not-allowed;
+.manga-form button:hover {
+   background: #3578c2;
 }
 
-.success {
-   color: #00e676;
-   margin-top: 10px;
+.manga-list ul {
+   list-style: none;
+   padding: 0;
 }
 
-.error {
-   color: #ff5252;
-   margin-top: 10px;
+.manga-list li {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 0.75rem;
+   border-bottom: 1px solid #eee;
+}
+
+.actions button {
+   margin-left: 0.5rem;
+   background: transparent;
+   border: none;
+   cursor: pointer;
+   font-size: 1.2rem;
 }
 </style>

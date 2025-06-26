@@ -7,6 +7,7 @@
             <h3>📚 Jami Mangalar</h3>
             <p>{{ totalManga }}</p>
          </div>
+
          <div class="stat-card">
             <h3>📄 Jami Boblar</h3>
             <p>{{ totalChapters }}</p>
@@ -15,14 +16,16 @@
 
       <div class="recent-chapters">
          <h3>🆕 Oxirgi Yuklangan Boblar</h3>
-         <ul>
-            <li v-for="chapter in recentChapters" :key="chapter.id">
-               <div class="chapter-info">
-                  <strong>#{{ chapter.number }}</strong> — {{ chapter.manga_title }}
+         <div class="chapter-grid">
+            <router-link v-for="chapter in recentChapters" :key="chapter.id"
+               :to="`/read/${chapter.manga_id}/${chapter.id}`" class="chapter-card">
+               <img :src="chapter.cover_url" alt="Manga cover" />
+               <div class="info">
+                  <span>{{ chapter.title }}</span>
+                  <p>#{{ chapter.number }}-bob</p>
                </div>
-               <span class="date">{{ formatDate(chapter.created_at) }}</span>
-            </li>
-         </ul>
+            </router-link>
+         </div>
       </div>
    </div>
 </template>
@@ -36,69 +39,58 @@ const totalChapters = ref(0)
 const recentChapters = ref([])
 
 onMounted(async () => {
-   // Mangalar soni
    const { count: mangaCount } = await supabase
       .from('manga')
       .select('id', { count: 'exact', head: true })
    totalManga.value = mangaCount
 
-   // Boblar soni
    const { count: chapterCount } = await supabase
       .from('chapters')
       .select('id', { count: 'exact', head: true })
    totalChapters.value = chapterCount
 
-   // Oxirgi yuklangan 5 ta bob (manga nomi bilan)
-   const { data, error } = await supabase
+   const { data: chapters, error } = await supabase
       .from('chapters')
-      .select('id, number, created_at, manga_id, manga!chapters_manga_id_fkey(title)')
+      .select(`
+         id,
+         number,
+         manga_id,
+         created_at,
+         fk_manga_id (
+            title,
+            cover_url
+         )
+      `)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(10)
 
-   if (!error && data) {
-      recentChapters.value = data.map((chap) => ({
-         id: chap.id,
-         number: chap.number,
-         created_at: chap.created_at,
-         manga_title: chap.manga?.title || 'Nomaʼlum',
-      }))
-   } else {
+   if (error) {
       console.error('Chapterlarni olishda xatolik:', error)
+      return
    }
-})
 
-function formatDate(dateStr) {
-   return new Date(dateStr).toLocaleDateString('uz-UZ', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-   })
-}
+   recentChapters.value = chapters.map(chap => ({
+      id: chap.id,
+      number: chap.number,
+      manga_id: chap.manga_id,
+      title: chap.fk_manga_id?.title || 'Nomaʼlum',
+      cover_url: chap.fk_manga_id?.cover_url || ''
+   }))
+})
 </script>
 
 <style scoped>
 .dashboard {
-   max-width: 1000px;
+   max-width: 1100px;
    margin: 2rem auto;
    padding: 2rem;
-   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-   background: #fff;
-   border-radius: 12px;
-   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-}
-
-h2 {
-   font-size: 2rem;
-   font-weight: bold;
-   color: #333;
-   margin-bottom: 2rem;
-   text-align: center;
+   font-family: 'Segoe UI', sans-serif;
 }
 
 .stats {
    display: flex;
    flex-wrap: wrap;
-   gap: 1.5rem;
+   gap: 1rem;
    margin-bottom: 2.5rem;
 }
 
@@ -109,70 +101,59 @@ h2 {
    border-radius: 10px;
    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
    text-align: center;
-   transition: transform 0.3s ease;
-}
-
-.stat-card:hover {
-   transform: translateY(-5px);
 }
 
 .stat-card h3 {
-   margin-bottom: 0.5rem;
-   font-size: 1.1rem;
+   font-size: 1.2rem;
    color: #4a4a4a;
+   margin-bottom: 0.5rem;
 }
 
 .stat-card p {
-   font-size: 2rem;
+   font-size: 1.8rem;
    font-weight: bold;
    color: #222;
 }
 
 .recent-chapters {
-   background-color: #f9fafe;
-   border: 1px solid #dde3f0;
-   padding: 1.5rem;
-   border-radius: 10px;
+   margin-top: 2rem;
 }
 
 .recent-chapters h3 {
    margin-bottom: 1rem;
-   font-size: 1.3rem;
-   color: #444;
-   border-left: 4px solid #4b7bec;
-   padding-left: 0.5rem;
-}
-
-.recent-chapters ul {
-   list-style: none;
-   padding: 0;
-   margin: 0;
-}
-
-.recent-chapters li {
-   padding: 0.75rem 1rem;
-   margin-bottom: 0.5rem;
-   background-color: #ffffff;
-   border: 1px solid #e0e6f0;
-   border-radius: 6px;
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   font-size: 1rem;
-   transition: background 0.2s;
-}
-
-.recent-chapters li:hover {
-   background-color: #f1f5fb;
-}
-
-.date {
-   font-size: 0.9rem;
-   color: #777;
-}
-
-.chapter-info {
-   font-weight: 500;
+   font-size: 1.4rem;
    color: #333;
+}
+
+.chapter-grid {
+   display: grid;
+   grid-template-columns: repeat(5, 1fr);
+   gap: 1rem;
+}
+
+.chapter-card {
+   background: #fff;
+   border: 1px solid #ddd;
+   border-radius: 8px;
+   overflow: hidden;
+   text-decoration: none;
+   color: #333;
+   transition: transform 0.2s ease;
+}
+
+.chapter-card:hover {
+   transform: translateY(-5px);
+}
+
+.chapter-card img {
+   width: 100%;
+   height: 220px;
+   object-fit: cover;
+}
+
+.chapter-card .info {
+   padding: 0.5rem;
+   text-align: center;
+   font-weight: 500;
 }
 </style>

@@ -1,64 +1,136 @@
 <template>
-   <form @submit.prevent="submitChapter">
-      <h4>Yangi Bob Qo‘shish</h4>
-      <input v-model="chapterNumber" placeholder="Chapter Number" required />
-      <input type="file" multiple @change="handleImages" />
-      <button type="submit">Qo‘shish</button>
-   </form>
+   <div class="chapter-form">
+      <h2>📥 Bob Yuklash</h2>
+
+      <form @submit.prevent="submitChapter">
+         <div>
+            <label>Manga tanlang:</label>
+            <select v-model="selectedMangaId" required>
+               <option disabled value="">-- Manga tanlang --</option>
+               <option v-for="m in mangas" :key="m.id" :value="m.id">
+                  {{ m.title }}
+               </option>
+            </select>
+         </div>
+
+         <div>
+            <label>Bob raqami:</label>
+            <input v-model="chapterNumber" type="number" required />
+         </div>
+
+         <div class="pages-section">
+            <label>Sahifalar:</label>
+            <div v-for="(url, index) in pages" :key="index" class="page-input">
+               <input v-model="pages[index]" type="text" :placeholder="`Sahifa ${index + 1} URL`" required />
+            </div>
+            <button type="button" @click="addPage" class="add-page-btn">➕ Yana sahifa qo‘shish</button>
+         </div>
+
+         <button type="submit" class="submit-btn">✅ Yuklash</button>
+      </form>
+   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
-import { useUiStore } from '@/stores/ui'  
-import axios from 'axios'
 
-const props = defineProps({ mangaId: Number })
-const ui = useUiStore()
-
+const selectedMangaId = ref('')
 const chapterNumber = ref('')
-const images = ref([])
+const pages = ref(['', '', '', '', '']) // Default 5 ta input
+const mangas = ref([])
 
-function handleImages(e) {
-   images.value = [...e.target.files]
+onMounted(async () => {
+   const { data, error } = await supabase.from('manga').select('id, title')
+   if (!error) mangas.value = data
+})
+
+function addPage() {
+   pages.value.push('')
 }
 
 async function submitChapter() {
-   ui.setLoading(true)
-   const imageUrls = []
-
-   for (const file of images.value) {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('fileName', file.name)
-      formData.append('publicKey', 'public_5bLBWfijCqeu8NuRntOUNKKSGyU=')
-
-      try {
-         const res = await axios.post('https://upload.imagekit.io/api/v1/files/upload', formData, {
-            headers: {
-               Authorization: `Basic ${btoa('private_deajqEWgfqiw93NcvVIdhoR+wIQ=')}`
-            }
-         })
-         imageUrls.push(res.data.url)
-      } catch (err) {
-         ui.showToastMessage("Rasm yuklanmadi")
-         return
-      }
+   if (!selectedMangaId.value || !chapterNumber.value || pages.value.some(p => !p)) {
+      alert('Iltimos, barcha maydonlarni to‘ldiring.')
+      return
    }
 
    const { error } = await supabase.from('chapters').insert({
-      manga_id: props.mangaId,
-      chapter_number: chapterNumber.value,
-      page_urls: imageUrls,
+      manga_id: selectedMangaId.value,
+      number: chapterNumber.value,
+      pages: pages.value
    })
 
-   ui.setLoading(false)
-
    if (error) {
-      ui.showToastMessage("Bob qo‘shishda xatolik")
+      console.error('Bobni yuklashda xatolik:', error)
+      alert('Xatolik yuz berdi')
    } else {
+      alert('Bob muvaffaqiyatli yuklandi!')
+      // Tozalash
+      selectedMangaId.value = ''
       chapterNumber.value = ''
-      images.value = []
+      pages.value = ['', '', '', '', '']
    }
 }
 </script>
+
+<style scoped>
+.chapter-form {
+   max-width: 600px;
+   margin: auto;
+   background: #fff;
+   padding: 2rem;
+   border-radius: 10px;
+   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+label {
+   display: block;
+   margin-top: 1rem;
+   font-weight: 500;
+}
+
+input,
+select {
+   width: 100%;
+   padding: 0.5rem;
+   margin-top: 0.3rem;
+   border: 1px solid #ccc;
+   border-radius: 5px;
+}
+
+.pages-section {
+   margin-top: 1rem;
+}
+
+.page-input {
+   margin-bottom: 0.5rem;
+}
+
+.add-page-btn {
+   background-color: #f0f0f0;
+   border: none;
+   padding: 0.4rem 0.8rem;
+   cursor: pointer;
+   border-radius: 5px;
+   margin-top: 0.5rem;
+}
+
+.add-page-btn:hover {
+   background-color: #e0e0e0;
+}
+
+.submit-btn {
+   margin-top: 2rem;
+   padding: 0.6rem 1.2rem;
+   background-color: #4caf50;
+   color: white;
+   border: none;
+   border-radius: 6px;
+   cursor: pointer;
+}
+
+.submit-btn:hover {
+   background-color: #45a049;
+}
+</style>

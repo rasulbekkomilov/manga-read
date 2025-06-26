@@ -31,7 +31,6 @@ const routes = [
    {
       path: '/dashboard',
       component: DashboardPage,
-      meta: { requiresAuth: true }
    },
    {
       path: '/admin',
@@ -52,12 +51,10 @@ const routes = [
    {
       path: '/read/:mangaId/:chapterId',
       component: ChapterRead,
-      meta: { requiresAuth: true }
    },
    {
       path: '/series/:mangaId/:slug',
       component: MangaDetail,
-      meta: { requiresAuth: true } // bu ham faqat ro‘yxatdan o‘tganlar uchun bo‘lsin
    }
 ]
 
