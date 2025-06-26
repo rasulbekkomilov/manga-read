@@ -1,27 +1,27 @@
 <template>
-   <div class="manga-detail">
-      <div class="header">
-         <img :src="manga.cover_url" alt="Manga cover" class="cover" />
+   <div class="detail">
+      <div class="manga-header">
+         <img :src="manga.cover_url" alt="Cover" class="cover" />
          <div class="info">
             <h1>{{ manga.title }}</h1>
-            <p class="status">📌 Holat: <strong>{{ statusLabel(manga.status) }}</strong></p>
-            <p class="genres">🏷️ Janrlar: <span v-for="(g, i) in manga.genres" :key="i">{{ g }}<span
-                     v-if="i < manga.genres.length - 1">, </span></span></p>
+            <p><strong>Status:</strong> {{ manga.status }}</p>
+            <p><strong>Janr:</strong> {{ manga.genres?.join(', ') || '—' }}</p>
+            <p class="description">{{ manga.description || 'Ta’rifi mavjud emas.' }}</p>
          </div>
       </div>
 
       <div class="chapters">
-         <h2>📖 Boblar</h2>
-         <div v-if="chapters.length === 0" class="empty">
-            Bu manga uchun hali boblar mavjud emas.
+         <h2>📄 Boblar</h2>
+         <div v-if="chapters.length">
+            <ul>
+               <li v-for="chapter in chapters" :key="chapter.id">
+                  <router-link :to="`/read/${manga.id}/${chapter.id}`">
+                     📖 Bob #{{ chapter.number }}
+                  </router-link>
+               </li>
+            </ul>
          </div>
-         <ul v-else>
-            <li v-for="chapter in chapters" :key="chapter.id">
-               <router-link :to="`/read/${manga.id}/${chapter.id}`">
-                  {{ chapter.number }} - bob
-               </router-link>
-            </li>
-         </ul>
+         <p v-else class="no-chapters">Hali boblar mavjud emas.</p>
       </div>
    </div>
 </template>
@@ -32,70 +32,49 @@ import { useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
 
 const route = useRoute()
-const mangaId = route.params.mangaId
-
 const manga = ref({})
 const chapters = ref([])
 
 onMounted(async () => {
-   const { data, error } = await supabase
-      .from('manga')
-      .select('*')
-      .eq('id', mangaId)
-      .single()
+   const { mangaId } = route.params
 
-   if (!error) {
-      manga.value = data
-   }
+   const { data: mangaData } = await supabase.from('manga').select('*').eq('id', mangaId).single()
+   manga.value = mangaData || {}
 
    const { data: chapterData } = await supabase
       .from('chapters')
-      .select('*')
+      .select('id, number, created_at')
       .eq('manga_id', mangaId)
       .order('number', { ascending: true })
 
    chapters.value = chapterData || []
 })
-
-function statusLabel(status) {
-   switch (status) {
-      case 'ongoing': return 'Davom etmoqda'
-      case 'completed': return 'Tugagan'
-      case 'paused': return 'Pauzada'
-      case 'stopped': return 'To‘xtatilgan'
-      default: return status
-   }
-}
 </script>
 
 <style scoped>
-.manga-detail {
-   max-width: 900px;
-   margin: 2rem auto;
-   padding: 1rem;
+.detail {
+   max-width: 1100px;
+   margin: auto;
+   padding: 1.5rem;
    font-family: 'Segoe UI', sans-serif;
 }
 
-.header {
+.manga-header {
    display: flex;
-   flex-direction: column;
-   align-items: center;
+   flex-wrap: wrap;
    gap: 1.5rem;
    margin-bottom: 2rem;
-}
-
-@media (min-width: 768px) {
-   .header {
-      flex-direction: row;
-      align-items: flex-start;
-   }
+   background: #f8f9fc;
+   padding: 1.5rem;
+   border-radius: 12px;
+   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .cover {
-   width: 220px;
-   height: auto;
-   border-radius: 12px;
-   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+   width: 240px;
+   height: 340px;
+   object-fit: cover;
+   border-radius: 10px;
 }
 
 .info {
@@ -105,14 +84,18 @@ function statusLabel(status) {
 .info h1 {
    font-size: 2rem;
    margin-bottom: 0.5rem;
-   color: #222;
+   color: #333;
 }
 
-.status,
-.genres {
-   margin-top: 0.5rem;
-   color: #444;
+.info p {
+   margin: 0.4rem 0;
    font-size: 1rem;
+   color: #444;
+}
+
+.description {
+   margin-top: 1rem;
+   font-style: italic;
 }
 
 .chapters {
@@ -120,25 +103,29 @@ function statusLabel(status) {
 }
 
 .chapters h2 {
-   font-size: 1.5rem;
    margin-bottom: 1rem;
+   color: #2d3436;
 }
 
 .chapters ul {
    list-style: none;
-   padding: 0;
+   padding-left: 0;
+   display: flex;
+   flex-wrap: wrap;
+   gap: 0.75rem;
 }
 
 .chapters li {
-   margin-bottom: 0.5rem;
-   background: #f5f7fa;
-   padding: 0.75rem 1rem;
-   border-radius: 8px;
-   transition: background 0.2s ease;
+   background: #ffffff;
+   border: 1px solid #ddd;
+   border-radius: 6px;
+   padding: 0.6rem 1rem;
+   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+   transition: transform 0.2s ease;
 }
 
 .chapters li:hover {
-   background: #e9eef5;
+   transform: translateY(-2px);
 }
 
 .chapters a {
@@ -147,8 +134,8 @@ function statusLabel(status) {
    font-weight: 500;
 }
 
-.empty {
-   color: #888;
+.no-chapters {
    font-style: italic;
+   color: #888;
 }
 </style>

@@ -23,6 +23,7 @@ const auth = useAuthStore()
 
 async function logout() {
    await supabase.auth.signOut()
+   window.location.reload();
    auth.clearUser()
    window.location.href = '/'
 }

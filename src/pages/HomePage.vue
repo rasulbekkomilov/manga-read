@@ -1,7 +1,6 @@
 <template>
    <div class="home">
       <h2 class="home-title">📖 Barcha Mangalar</h2>
-
       <div class="manga-list">
          <router-link v-for="manga in mangas" :key="manga.id" :to="`/series/${manga.id}/${slugify(manga.title)}`"
             class="manga-card">
@@ -47,10 +46,12 @@ function slugify(title) {
 
 .manga-list {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-   gap: 1rem;
+   grid-template-columns: repeat(5, 1fr);
+   /* Har qatorga 5ta card */
+   gap: 1.2rem;
 }
 
+/* Kartochka */
 .manga-card {
    background: #fff;
    border: 1px solid #ddd;
@@ -65,15 +66,17 @@ function slugify(title) {
 
 .manga-card:hover {
    transform: translateY(-4px);
-   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* Rasm */
 .manga-card img {
    width: 100%;
    height: 240px;
    object-fit: cover;
 }
 
+/* Sarlavha */
 .card-info {
    padding: 0.75rem;
    text-align: center;
@@ -86,5 +89,30 @@ function slugify(title) {
    color: #333;
    margin: 0;
    font-weight: 600;
+}
+
+/* 📱 Responsive */
+@media (max-width: 1200px) {
+   .manga-list {
+      grid-template-columns: repeat(4, 1fr);
+   }
+}
+
+@media (max-width: 992px) {
+   .manga-list {
+      grid-template-columns: repeat(3, 1fr);
+   }
+}
+
+@media (max-width: 768px) {
+   .manga-list {
+      grid-template-columns: repeat(2, 1fr);
+   }
+}
+
+@media (max-width: 500px) {
+   .manga-list {
+      grid-template-columns: 1fr;
+   }
 }
 </style>

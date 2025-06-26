@@ -1,52 +1,38 @@
 <template>
-   <div class="manga-form-container">
-      <div class="form-card">
-         <h2>📚 Manga Qo‘shish</h2>
-         <form @submit.prevent="submitManga">
-            <!-- Manga nomi -->
-            <input v-model="title" type="text" placeholder="Manga nomi" required />
+   <div class="manage-container">
+      <h2>Manga Qo‘shish</h2>
 
-            <!-- Cover link -->
-            <input v-model="coverUrl" type="url" placeholder="Cover URL (rasm manzili)" required />
-            <div v-if="coverUrl" class="preview">
-               <img :src="coverUrl" alt="Cover preview" />
+      <form @submit.prevent="submitManga" class="manga-form">
+         <input v-model="title" type="text" placeholder="Nomi" required />
+         <input v-model="cover_url" type="url" placeholder="Cover URL" required />
+         <textarea v-model="description" placeholder="Tavsifi"></textarea>
+         <select v-model="status" required>
+            <option value="" disabled selected>Holatini tanlang</option>
+            <option value="davom etmoqda">Davom etmoqda</option>
+            <option value="tugagan">Tugagan</option>
+            <option value="pauzada">Pauzada</option>
+            <option value="to‘xtatilgan">To‘xtatilgan</option>
+         </select>
+         <input v-model="genresInput" type="text" placeholder="Janrlar (vergul bilan)" />
+         <button type="submit">{{ editingId ? 'Saqlash' : 'Qo‘shish' }}</button>
+      </form>
+
+      <div class="manga-list">
+         <h3>📚 Qo‘shilgan Mangalar</h3>
+         <p v-if="mangas.length === 0">Hali manga qo‘shilmagan.</p>
+         <div v-else class="manga-cards">
+            <div class="manga-card" v-for="m in mangas" :key="m.id">
+               <img :src="m.cover_url" alt="cover" />
+               <div class="info">
+                  <h4>{{ m.title }}</h4>
+                  <p>{{ m.status }}</p>
+                  <p class="desc">{{ m.description || 'Tavsif yo‘q' }}</p>
+                  <div class="actions">
+                     <button @click="editManga(m)">✏️</button>
+                     <button @click="deleteManga(m.id)">🗑</button>
+                  </div>
+               </div>
             </div>
-
-            <!-- Janr tanlash -->
-            <div class="genres">
-               <label v-for="g in genreList" :key="g">
-                  <input type="checkbox" :value="g" v-model="genres" />
-                  {{ g }}
-               </label>
-            </div>
-
-            <!-- Holat -->
-            <select v-model="status" required>
-               <option disabled value="">Holatini tanlang</option>
-               <option value="tugagan">Tugagan</option>
-               <option value="davom etyapti">Davom etyapti</option>
-               <option value="to‘xtatilgan">To‘xtatilgan</option>
-               <option value="pauzada">Pauzada</option>
-            </select>
-
-            <button type="submit" :disabled="loading">
-               <span v-if="loading">Yuklanmoqda...</span>
-               <span v-else>Qo‘shish</span>
-            </button>
-         </form>
-      </div>
-
-      <div class="chapters-card">
-         <h3>📄 Mavjud boblar</h3>
-         <div v-if="chapters.length">
-            <ul>
-               <li v-for="ch in chapters" :key="ch.id">
-                  Bob #{{ ch.number }} - {{ ch.created_at.split('T')[0] }}
-               </li>
-            </ul>
-         </div>
-         <div v-else>
-            <p>⛔ Hali boblar mavjud emas.</p>
          </div>
       </div>
    </div>
@@ -57,141 +43,150 @@ import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
 
 const title = ref('')
-const genres = ref([])
+const description = ref('')
 const status = ref('')
-const coverUrl = ref('')
-const loading = ref(false)
-const chapters = ref([])
+const cover_url = ref('')
+const genresInput = ref('')
+const editingId = ref(null)
+const mangas = ref([])
 
-const genreList = [
-   'Action', 'Adventure', 'Fantasy', 'Romance', 'Comedy',
-   'Drama', 'Horror', 'Mystery', 'Sci-Fi', 'Slice of Life'
-]
+onMounted(fetchMangas)
+
+async function fetchMangas() {
+   const { data } = await supabase.from('manga').select('*').order('created_at', { ascending: false })
+   mangas.value = data || []
+}
 
 async function submitManga() {
-   if (!title.value || !status.value || genres.value.length === 0 || !coverUrl.value) return
+   const genreArray = genresInput.value.split(',').map(g => g.trim()).filter(Boolean)
 
-   loading.value = true
-   try {
-      const { error } = await supabase.from('manga').insert([{
-         title: title.value,
-         genres: genres.value,
-         status: status.value,
-         cover_url: coverUrl.value
-      }])
-
-      if (error) throw error
-
-      alert('✅ Manga muvaffaqiyatli qo‘shildi')
-      title.value = ''
-      genres.value = []
-      status.value = ''
-      coverUrl.value = ''
-      fetchChapters()
-   } catch (err) {
-      console.error(err)
-      alert('❌ Manga qo‘shishda xatolik')
+   const payload = {
+      title: title.value,
+      description: description.value,
+      status: status.value,
+      cover_url: cover_url.value,
+      genres: genreArray,
    }
-   loading.value = false
+
+   if (editingId.value) {
+      await supabase.from('manga').update(payload).eq('id', editingId.value)
+      editingId.value = null
+   } else {
+      await supabase.from('manga').insert(payload)
+   }
+
+   title.value = ''
+   description.value = ''
+   status.value = ''
+   cover_url.value = ''
+   genresInput.value = ''
+
+   fetchMangas()
 }
 
-async function fetchChapters() {
-   const { data, error } = await supabase
-      .from('chapters')
-      .select('id, number, created_at')
-      .order('created_at', { ascending: false })
-
-   if (!error) chapters.value = data
+function editManga(m) {
+   title.value = m.title
+   description.value = m.description
+   status.value = m.status
+   cover_url.value = m.cover_url
+   genresInput.value = m.genres?.join(', ') || ''
+   editingId.value = m.id
 }
 
-onMounted(fetchChapters)
+async function deleteManga(id) {
+   if (confirm('Rostdan ham o‘chirmoqchimisiz?')) {
+      await supabase.from('manga').delete().eq('id', id)
+      fetchMangas()
+   }
+}
 </script>
 
 <style scoped>
-.manga-form-container {
-   display: flex;
-   flex-wrap: wrap;
-   gap: 2rem;
-   justify-content: center;
-   padding: 2rem;
+.manage-container {
+   max-width: 1000px;
+   margin: auto;
+   padding: 2rem 1rem;
+   font-family: 'Segoe UI', sans-serif;
 }
 
-.form-card,
-.chapters-card {
-   flex: 1 1 400px;
-   background: #fff;
-   padding: 2rem;
-   border-radius: 10px;
-   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-h2,
-h3 {
-   margin-bottom: 1rem;
-   color: #333;
-}
-
-form input,
-form select {
-   display: block;
-   width: 100%;
-   margin-bottom: 1rem;
-   padding: 0.75rem;
-   border-radius: 6px;
-   border: 1px solid #ccc;
-   font-size: 1rem;
-}
-
-.genres {
+.manga-form {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-   gap: 0.5rem;
-   margin-bottom: 1rem;
+   gap: 1rem;
+   margin-bottom: 2rem;
 }
 
-.genres label {
-   font-size: 0.95rem;
-   display: flex;
-   align-items: center;
-   gap: 0.4rem;
-}
-
-.preview img {
-   width: 100%;
-   max-height: 200px;
-   object-fit: contain;
-   margin-bottom: 1rem;
+.manga-form input,
+.manga-form textarea,
+.manga-form select {
+   padding: 0.7rem;
+   font-size: 1rem;
    border: 1px solid #ccc;
    border-radius: 6px;
 }
 
-button {
-   width: 100%;
+.manga-form button {
+   padding: 0.8rem;
    background: #4b7bec;
    color: white;
    border: none;
-   padding: 0.75rem;
    border-radius: 6px;
-   font-size: 1rem;
+   font-weight: bold;
    cursor: pointer;
-   transition: background 0.3s ease;
 }
 
-button:hover {
-   background: #3867d6;
+.manga-list {
+   margin-top: 2rem;
 }
 
-.chapters-card ul {
-   list-style: none;
-   padding: 0;
+.manga-cards {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+   gap: 1rem;
+}
+
+.manga-card {
+   background: #fff;
+   border: 1px solid #ddd;
+   border-radius: 10px;
+   overflow: hidden;
+   display: flex;
+   flex-direction: column;
+}
+
+.manga-card img {
+   width: 100%;
+   height: 300px;
+   object-fit: cover;
+}
+
+.info {
+   padding: 0.75rem;
+}
+
+.info h4 {
    margin: 0;
+   font-size: 1.1rem;
+   color: #333;
 }
 
-.chapters-card li {
-   padding: 0.75rem 1rem;
-   margin-bottom: 0.5rem;
-   background: #f5f7fb;
-   border-radius: 6px;
-   font-size: 0.95rem;
+.info .desc {
+   font-size: 0.9rem;
+   color: #666;
+   margin: 0.5rem 0;
+   height: 60px;
+   overflow: hidden;
+}
+
+.actions {
+   display: flex;
+   justify-content: flex-end;
+   gap: 0.5rem;
+}
+
+.actions button {
+   background: transparent;
+   border: none;
+   font-size: 1.1rem;
+   cursor: pointer;
 }
 </style>
