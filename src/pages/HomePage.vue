@@ -2,8 +2,7 @@
    <div class="home">
       <h2 class="home-title">📖 Barcha Mangalar</h2>
       <div class="manga-list">
-         <router-link v-for="manga in mangas" :key="manga.id" :to="`/series/${manga.id}/${slugify(manga.title)}`"
-            class="manga-card">
+         <router-link v-for="manga in mangas" :key="manga.id" :to="`/${manga.slug}`" class="manga-card">
             <img :src="manga.cover_url" alt="Manga cover" />
             <div class="card-info">
                <h3>{{ manga.title }}</h3>

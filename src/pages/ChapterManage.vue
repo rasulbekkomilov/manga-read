@@ -1,36 +1,43 @@
 <template>
-   <div class="chapter-manage container">
-      <h2>📄 Boblarni Boshqarish</h2>
+   <div class="container">
+      <h2 class="title">📄 Boblarni Boshqarish</h2>
 
       <!-- Manga tanlash -->
       <div class="form-group">
          <label for="mangaSelect">Mangani tanlang:</label>
          <select v-model="selectedMangaId" @change="fetchChapters">
             <option disabled value="">Mangani tanlang...</option>
-            <option v-for="manga in mangas" :key="manga.id" :value="manga.id">{{ manga.title }}</option>
+            <option v-for="manga in mangas" :key="manga.id" :value="manga.id">
+               {{ manga.title }}
+            </option>
          </select>
       </div>
 
       <!-- Bob qo‘shish -->
-      <div v-if="selectedMangaId" class="add-chapter">
-         <h3>➕ Yangi Bob Qo‘shish</h3>
-         <form @submit.prevent="submitChapter">
-            <input type="number" v-model="chapterNumber" placeholder="Bob raqami" required />
-            <div v-for="(url, index) in pageUrls" :key="index" class="page-input">
-               <input v-model="pageUrls[index]" placeholder="Rasm linki (page URL)" />
-            </div>
-            <button type="button" @click="addPageInput">+ Yana sahifa</button>
-            <button type="submit">📤 Yuklash</button>
-         </form>
+      <div v-if="selectedMangaId" class="form-group">
+         <label>Yangi bob raqami:</label>
+         <input type="number" v-model.number="newChapterNumber" placeholder="Masalan: 1" />
+
+         <label>Slug (Qo‘lda yoziladi):</label>
+         <input type="text" v-model="newSlug" placeholder="Masalan: kagurabachi_1-bob" />
+
+         <label>Rasm linklari:</label>
+         <div class="page-inputs">
+            <input v-for="(link, index) in pageLinks" :key="index" v-model="pageLinks[index]" type="text"
+               :placeholder="`Page ${index + 1} link`" @input="handlePageInput(index)" />
+         </div>
+
+         <button class="btn primary" @click="addChapter">➕ Bob qo‘shish</button>
       </div>
 
       <!-- Boblar ro‘yxati -->
-      <div v-if="selectedMangaId" class="chapter-list">
-         <h3>📚 Tanlangan Manga Boblari</h3>
-         <div v-if="chapters.length">
+      <div v-if="selectedMangaId" class="chapters-section">
+         <h3>📚 Tanlangan manga boblari</h3>
+
+         <div v-if="chapters.length > 0" class="chapter-list">
             <div v-for="chapter in chapters" :key="chapter.id" class="chapter-item">
-               <span>Bob #{{ chapter.number }}</span>
-               <button v-if="auth.isAdmin" @click="deleteChapter(chapter.id)">🗑️ O'chirish</button>
+               <span>Bob #{{ chapter.number }} ({{ chapter.slug }})</span>
+               <button class="btn danger" @click="deleteChapter(chapter.id)">🗑️ O‘chirish</button>
             </div>
          </div>
          <p v-else class="no-chapters">Bu mangada boblar yo‘q</p>
@@ -41,14 +48,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
-import { useAuthStore } from '@/stores/auth'
 
 const mangas = ref([])
-const selectedMangaId = ref('')
 const chapters = ref([])
-const chapterNumber = ref('')
-const pageUrls = ref([''])
-const auth = useAuthStore()
+const selectedMangaId = ref('')
+const newChapterNumber = ref(null)
+const newSlug = ref('')
+const pageLinks = ref([''])
 
 onMounted(async () => {
    const { data, error } = await supabase.from('manga').select('id, title')
@@ -57,50 +63,55 @@ onMounted(async () => {
 
 async function fetchChapters() {
    chapters.value = []
+   if (!selectedMangaId.value) return
+
    const { data, error } = await supabase
       .from('chapters')
-      .select('id, number')
+      .select('id, number, slug')
       .eq('manga_id', selectedMangaId.value)
       .order('number', { ascending: true })
 
    if (!error) chapters.value = data
 }
 
-function addPageInput() {
-   pageUrls.value.push('')
+function handlePageInput(index) {
+   if (index === pageLinks.value.length - 1 && pageLinks.value[index].trim() !== '') {
+      pageLinks.value.push('')
+   }
 }
 
-async function submitChapter() {
-   if (!chapterNumber.value || pageUrls.value.every(url => url.trim() === '')) {
-      alert('Iltimos, bob raqami va kamida bitta sahifa linkini kiriting.')
+async function addChapter() {
+   if (!newChapterNumber.value || !newSlug.value || !pageLinks.value.some(link => link.trim())) {
+      alert("Iltimos, barcha maydonlarni to‘ldiring.")
       return
    }
 
-   const { data, error } = await supabase.from('chapters').insert({
+   const { error } = await supabase.from('chapters').insert({
+      number: newChapterNumber.value,
+      slug: newSlug.value,
+      pages: pageLinks.value.filter(link => link.trim() !== ''),
       manga_id: selectedMangaId.value,
-      number: chapterNumber.value,
-      pages: pageUrls.value.filter(url => url.trim() !== '')
    })
 
    if (!error) {
-      alert('Bob muvaffaqiyatli qo‘shildi!')
-      chapterNumber.value = ''
-      pageUrls.value = ['']
+      newChapterNumber.value = null
+      newSlug.value = ''
+      pageLinks.value = ['']
       fetchChapters()
    } else {
-      console.error(error)
-      alert('Xatolik yuz berdi.')
+      alert("Bob qo‘shishda xatolik: " + error.message)
    }
 }
 
 async function deleteChapter(id) {
-   const confirmDelete = confirm('Bu bobni o‘chirishga ishonchingiz komilmi?')
+   const confirmDelete = confirm('Rostdan ham bu bobni o‘chirmoqchimisiz?')
    if (!confirmDelete) return
 
    const { error } = await supabase.from('chapters').delete().eq('id', id)
    if (!error) fetchChapters()
 }
 </script>
+
 
 <style scoped>
 .container {
@@ -110,106 +121,87 @@ async function deleteChapter(id) {
    font-family: 'Segoe UI', sans-serif;
 }
 
-h2,
-h3 {
+.title {
+   font-size: 1.8rem;
    text-align: center;
-   margin-bottom: 1rem;
-   color: #333;
+   margin-bottom: 2rem;
 }
 
 .form-group {
    margin-bottom: 1.5rem;
-   text-align: center;
 }
 
+input,
 select {
-   padding: 0.6rem;
-   border-radius: 6px;
-   font-size: 1rem;
-   width: 100%;
-   max-width: 300px;
-   border: 1px solid #ccc;
-}
-
-.add-chapter form {
-   display: flex;
-   flex-direction: column;
-   gap: 0.6rem;
-   margin-bottom: 2rem;
-   align-items: center;
-}
-
-.add-chapter input {
-   padding: 0.5rem;
    width: 100%;
    max-width: 400px;
+   padding: 0.6rem;
+   margin-top: 0.4rem;
+   margin-bottom: 0.8rem;
    border-radius: 6px;
    border: 1px solid #ccc;
+   font-size: 1rem;
 }
 
-.add-chapter button {
-   padding: 0.6rem 1.2rem;
-   background-color: #4b7bec;
-   color: white;
-   border: none;
-   border-radius: 6px;
-   cursor: pointer;
+.page-inputs {
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
 }
 
-.add-chapter button:hover {
-   background-color: #3867d6;
+.chapters-section {
+   background-color: #f9f9f9;
+   padding: 1rem;
+   border-radius: 8px;
+   border: 1px solid #ddd;
 }
 
 .chapter-list {
-   border-top: 1px solid #ddd;
-   padding-top: 1.5rem;
+   margin-top: 1rem;
+   display: flex;
+   flex-direction: column;
+   gap: 0.75rem;
 }
 
 .chapter-item {
-   background: #fdfdfd;
+   background: #fff;
    padding: 0.6rem 1rem;
-   border: 1px solid #ccc;
-   margin-bottom: 0.6rem;
    border-radius: 6px;
+   border: 1px solid #ccc;
    display: flex;
    justify-content: space-between;
    align-items: center;
 }
 
-.chapter-item button {
-   background: #ff5e57;
-   color: white;
+.btn {
+   padding: 0.5rem 0.9rem;
+   font-size: 0.95rem;
    border: none;
-   padding: 0.4rem 0.8rem;
    border-radius: 4px;
    cursor: pointer;
+   margin-left: 0.5rem;
 }
 
-.chapter-item button:hover {
-   background: #e74c3c;
+.btn.primary {
+   background-color: #3498db;
+   color: #fff;
+}
+
+.btn.danger {
+   background-color: #e74c3c;
+   color: #fff;
 }
 
 .no-chapters {
-   text-align: center;
+   margin-top: 1rem;
    font-style: italic;
    color: #777;
 }
 
 @media (max-width: 600px) {
-
-   .add-chapter input,
-   select {
-      width: 100%;
-   }
-
    .chapter-item {
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.4rem;
-   }
-
-   .chapter-item button {
-      align-self: flex-end;
    }
 }
 </style>

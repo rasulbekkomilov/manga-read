@@ -37,8 +37,16 @@ const routes = [
       component: ChapterManage,
       meta: { requiresAuth: true, requiresAdmin: true }
    },
-   { path: '/read/:mangaId/:chapterId', component: ChapterRead },
-   { path: '/series/:mangaId/:slug', component: MangaDetail },
+   {
+      path: '/:mangaSlug/:chapterSlug',
+      name: 'ChapterReader',
+      component: ChapterRead, // bu fayl bo'lishi kerak
+   },
+   {
+      path: '/:slug',
+      name: 'MangaDetail',
+      component: MangaDetail,
+   }
 ]
 
 const router = createRouter({

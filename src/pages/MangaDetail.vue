@@ -1,27 +1,24 @@
 <template>
-   <div class="detail">
-      <div class="manga-header">
+   <div class="manga-detail">
+      <div v-if="manga">
+         <h2>{{ manga.title }}</h2>
          <img :src="manga.cover_url" alt="Cover" class="cover" />
-         <div class="info">
-            <h1>{{ manga.title }}</h1>
-            <p><strong>Status:</strong> {{ manga.status }}</p>
-            <p><strong>Janr:</strong> {{ manga.genres?.join(', ') || '—' }}</p>
-            <p class="description">{{ manga.description || 'Ta’rifi mavjud emas.' }}</p>
-         </div>
-      </div>
+         <p><strong>Holat:</strong> {{ manga.status }}</p>
+         <p><strong>Janrlar:</strong> {{ manga.genres.join(', ') }}</p>
+         <p class="desc">{{ manga.description }}</p>
 
-      <div class="chapters">
-         <h2>📄 Boblar</h2>
-         <div v-if="chapters.length">
-            <ul>
-               <li v-for="chapter in chapters" :key="chapter.id">
-                  <router-link :to="`/read/${manga.id}/${chapter.id}`">
-                     📖 Bob #{{ chapter.number }}
-                  </router-link>
-               </li>
-            </ul>
-         </div>
-         <p v-else class="no-chapters">Hali boblar mavjud emas.</p>
+         <h3>📚 Boblar</h3>
+         <ul v-if="chapters.length > 0" class="chapter-list">
+            <li v-for="chapter in chapters" :key="chapter.id">
+               <router-link :to="`/${manga.slug}/${chapter.slug}`">
+                  📖 Bob {{ chapter.number }}
+               </router-link>
+            </li>
+         </ul>
+         <p v-else class="no-chapters">Bu mangada hali boblar mavjud emas.</p>
+      </div>
+      <div v-else>
+         <p>⏳ Yuklanmoqda...</p>
       </div>
    </div>
 </template>
@@ -32,110 +29,66 @@ import { useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
 
 const route = useRoute()
-const manga = ref({})
+const manga = ref(null)
 const chapters = ref([])
 
 onMounted(async () => {
-   const { mangaId } = route.params
+   const { data: mangaData } = await supabase
+      .from('manga')
+      .select('*')
+      .eq('slug', route.params.slug)
+      .single()
 
-   const { data: mangaData } = await supabase.from('manga').select('*').eq('id', mangaId).single()
-   manga.value = mangaData || {}
+   if (mangaData) {
+      manga.value = mangaData
 
-   const { data: chapterData } = await supabase
-      .from('chapters')
-      .select('id, number, created_at')
-      .eq('manga_id', mangaId)
-      .order('number', { ascending: true })
+      const { data: chapterData } = await supabase
+         .from('chapters')
+         .select('id, number, slug')
+         .eq('manga_id', mangaData.id)
+         .order('number', { ascending: true })
 
-   chapters.value = chapterData || []
+      if (chapterData) chapters.value = chapterData
+   }
 })
 </script>
 
 <style scoped>
-.detail {
-   max-width: 1100px;
-   margin: auto;
-   padding: 1.5rem;
+.manga-detail {
+   max-width: 800px;
+   margin: 2rem auto;
+   padding: 1rem;
    font-family: 'Segoe UI', sans-serif;
 }
 
-.manga-header {
-   display: flex;
-   flex-wrap: wrap;
-   gap: 1.5rem;
-   margin-bottom: 2rem;
-   background: #f8f9fc;
-   padding: 1.5rem;
-   border-radius: 12px;
-   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
 .cover {
-   width: 240px;
-   height: 340px;
-   object-fit: cover;
-   border-radius: 10px;
+   width: 100%;
+   max-width: 320px;
+   height: auto;
+   border-radius: 8px;
+   margin: 1rem 0;
 }
 
-.info {
-   flex: 1;
-}
-
-.info h1 {
-   font-size: 2rem;
-   margin-bottom: 0.5rem;
-   color: #333;
-}
-
-.info p {
-   margin: 0.4rem 0;
+.desc {
+   margin-top: 1rem;
    font-size: 1rem;
    color: #444;
+   line-height: 1.5;
 }
 
-.description {
-   margin-top: 1rem;
-   font-style: italic;
-}
-
-.chapters {
-   margin-top: 2rem;
-}
-
-.chapters h2 {
-   margin-bottom: 1rem;
-   color: #2d3436;
-}
-
-.chapters ul {
+.chapter-list {
    list-style: none;
-   padding-left: 0;
-   display: flex;
-   flex-wrap: wrap;
-   gap: 0.75rem;
+   padding: 0;
+   margin-top: 1rem;
 }
 
-.chapters li {
-   background: #ffffff;
-   border: 1px solid #ddd;
-   border-radius: 6px;
-   padding: 0.6rem 1rem;
-   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-   transition: transform 0.2s ease;
-}
-
-.chapters li:hover {
-   transform: translateY(-2px);
-}
-
-.chapters a {
-   text-decoration: none;
-   color: #2c3e50;
-   font-weight: 500;
+.chapter-list li {
+   margin-bottom: 0.5rem;
 }
 
 .no-chapters {
    font-style: italic;
    color: #888;
+   margin-top: 0.5rem;
 }
 </style>

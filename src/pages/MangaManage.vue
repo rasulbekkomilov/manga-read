@@ -1,37 +1,46 @@
 <template>
-   <div class="manage-container">
-      <h2>Manga Qo‘shish</h2>
+   <div class="container">
+      <h2 class="title">📚 Manga Qo‘shish</h2>
 
-      <form @submit.prevent="submitManga" class="manga-form">
-         <input v-model="title" type="text" placeholder="Nomi" required />
-         <input v-model="cover_url" type="url" placeholder="Cover URL" required />
-         <textarea v-model="description" placeholder="Tavsifi"></textarea>
-         <select v-model="status" required>
-            <option value="" disabled selected>Holatini tanlang</option>
-            <option value="davom etmoqda">Davom etmoqda</option>
-            <option value="tugagan">Tugagan</option>
-            <option value="pauzada">Pauzada</option>
-            <option value="to‘xtatilgan">To‘xtatilgan</option>
+      <!-- Manga form -->
+      <div class="form-group">
+         <label>Nomi:</label>
+         <input v-model="newManga.title" type="text" placeholder="Manga nomi" />
+
+         <label>Slug (url):</label>
+         <input v-model="newManga.slug" type="text" placeholder="slug-nomi" />
+
+         <label>Cover rasmi (link):</label>
+         <input v-model="newManga.cover_url" type="text" placeholder="https://image.url" />
+
+         <label>Holati:</label>
+         <select v-model="newManga.status">
+            <option value="ongoing">Davom etmoqda</option>
+            <option value="completed">Tugagan</option>
+            <option value="hiatus">Pauzada</option>
+            <option value="cancelled">To‘xtatilgan</option>
          </select>
-         <input v-model="genresInput" type="text" placeholder="Janrlar (vergul bilan)" />
-         <button type="submit">{{ editingId ? 'Saqlash' : 'Qo‘shish' }}</button>
-      </form>
 
+         <label>Janrlar (vergul bilan):</label>
+         <input v-model="newManga.genres" type="text" placeholder="action, adventure, fantasy" />
+
+         <label>Tavsif:</label>
+         <textarea v-model="newManga.description" placeholder="Manga haqida qisqacha..." rows="3"></textarea>
+
+         <button class="btn primary" @click="submitManga">➕ Qo‘shish</button>
+      </div>
+
+      <!-- Mavjud mangalar ro‘yxati -->
       <div class="manga-list">
-         <h3>📚 Qo‘shilgan Mangalar</h3>
-         <p v-if="mangas.length === 0">Hali manga qo‘shilmagan.</p>
-         <div v-else class="manga-cards">
-            <div class="manga-card" v-for="m in mangas" :key="m.id">
-               <img :src="m.cover_url" alt="cover" />
-               <div class="info">
-                  <h4>{{ m.title }}</h4>
-                  <p>{{ m.status }}</p>
-                  <p class="desc">{{ m.description || 'Tavsif yo‘q' }}</p>
-                  <div class="actions">
-                     <button @click="editManga(m)">✏️</button>
-                     <button @click="deleteManga(m.id)">🗑</button>
-                  </div>
-               </div>
+         <h3>📖 Mavjud Mangalar</h3>
+         <div v-for="manga in mangas" :key="manga.id" class="manga-card">
+            <div>
+               <strong>{{ manga.title }}</strong>
+               <small style="display: block; color: gray">Slug: {{ manga.slug }}</small>
+            </div>
+            <div>
+               <button class="btn edit" @click="editManga(manga)">✏️</button>
+               <button class="btn danger" @click="deleteManga(manga.id)">🗑️</button>
             </div>
          </div>
       </div>
@@ -42,151 +51,135 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/supabase'
 
-const title = ref('')
-const description = ref('')
-const status = ref('')
-const cover_url = ref('')
-const genresInput = ref('')
-const editingId = ref(null)
+const newManga = ref({
+   title: '',
+   slug: '',
+   cover_url: '',
+   status: 'ongoing',
+   genres: '',
+   description: ''
+})
+
 const mangas = ref([])
 
 onMounted(fetchMangas)
 
 async function fetchMangas() {
-   const { data } = await supabase.from('manga').select('*').order('created_at', { ascending: false })
-   mangas.value = data || []
+   const { data, error } = await supabase.from('manga').select('*').order('created_at', { ascending: false })
+   if (!error) mangas.value = data
 }
 
 async function submitManga() {
-   const genreArray = genresInput.value.split(',').map(g => g.trim()).filter(Boolean)
+   if (!newManga.value.title || !newManga.value.slug) return
 
-   const payload = {
-      title: title.value,
-      description: description.value,
-      status: status.value,
-      cover_url: cover_url.value,
-      genres: genreArray,
+   const { error } = await supabase.from('manga').insert({
+      ...newManga.value,
+      genres: newManga.value.genres.split(',').map(g => g.trim())
+   })
+
+   if (!error) {
+      newManga.value = {
+         title: '', slug: '', cover_url: '', status: 'ongoing', genres: '', description: ''
+      }
+      fetchMangas()
    }
-
-   if (editingId.value) {
-      await supabase.from('manga').update(payload).eq('id', editingId.value)
-      editingId.value = null
-   } else {
-      await supabase.from('manga').insert(payload)
-   }
-
-   title.value = ''
-   description.value = ''
-   status.value = ''
-   cover_url.value = ''
-   genresInput.value = ''
-
-   fetchMangas()
-}
-
-function editManga(m) {
-   title.value = m.title
-   description.value = m.description
-   status.value = m.status
-   cover_url.value = m.cover_url
-   genresInput.value = m.genres?.join(', ') || ''
-   editingId.value = m.id
 }
 
 async function deleteManga(id) {
-   if (confirm('Rostdan ham o‘chirmoqchimisiz?')) {
-      await supabase.from('manga').delete().eq('id', id)
-      fetchMangas()
+   const confirmDelete = confirm('Rostdan ham bu mangani o‘chirmoqchimisiz?')
+   if (!confirmDelete) return
+
+   const { error } = await supabase.from('manga').delete().eq('id', id)
+   if (!error) fetchMangas()
+}
+
+function editManga(manga) {
+   newManga.value = {
+      title: manga.title,
+      slug: manga.slug,
+      cover_url: manga.cover_url,
+      status: manga.status,
+      genres: manga.genres.join(', '),
+      description: manga.description || ''
    }
+   deleteManga(manga.id)
 }
 </script>
 
 <style scoped>
-.manage-container {
-   max-width: 1000px;
-   margin: auto;
+.container {
+   max-width: 800px;
+   margin: 0 auto;
    padding: 2rem 1rem;
    font-family: 'Segoe UI', sans-serif;
 }
 
-.manga-form {
-   display: grid;
-   gap: 1rem;
+.title {
+   font-size: 1.8rem;
+   text-align: center;
    margin-bottom: 2rem;
 }
 
-.manga-form input,
-.manga-form textarea,
-.manga-form select {
-   padding: 0.7rem;
-   font-size: 1rem;
-   border: 1px solid #ccc;
-   border-radius: 6px;
+.form-group {
+   margin-bottom: 2rem;
 }
 
-.manga-form button {
-   padding: 0.8rem;
-   background: #4b7bec;
-   color: white;
-   border: none;
+input,
+select,
+textarea {
+   width: 100%;
+   padding: 0.6rem;
+   margin-bottom: 1rem;
    border-radius: 6px;
-   font-weight: bold;
+   border: 1px solid #ccc;
+   font-size: 1rem;
+   box-sizing: border-box;
+}
+
+.btn {
+   padding: 0.5rem 1rem;
+   border: none;
+   border-radius: 4px;
    cursor: pointer;
+   margin-right: 0.5rem;
+   font-size: 0.95rem;
+}
+
+.btn.primary {
+   background-color: #3498db;
+   color: white;
+}
+
+.btn.danger {
+   background-color: #e74c3c;
+   color: white;
+}
+
+.btn.edit {
+   background-color: #f39c12;
+   color: white;
 }
 
 .manga-list {
-   margin-top: 2rem;
-}
-
-.manga-cards {
-   display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-   gap: 1rem;
+   background: #f9f9f9;
+   border: 1px solid #ddd;
+   padding: 1rem;
+   border-radius: 8px;
 }
 
 .manga-card {
-   background: #fff;
-   border: 1px solid #ddd;
-   border-radius: 10px;
-   overflow: hidden;
    display: flex;
-   flex-direction: column;
+   justify-content: space-between;
+   padding: 0.8rem;
+   border-bottom: 1px solid #ccc;
+   align-items: center;
 }
 
-.manga-card img {
-   width: 100%;
-   height: 300px;
-   object-fit: cover;
-}
-
-.info {
-   padding: 0.75rem;
-}
-
-.info h4 {
-   margin: 0;
-   font-size: 1.1rem;
-   color: #333;
-}
-
-.info .desc {
-   font-size: 0.9rem;
-   color: #666;
-   margin: 0.5rem 0;
-   height: 60px;
-   overflow: hidden;
-}
-
-.actions {
-   display: flex;
-   justify-content: flex-end;
-   gap: 0.5rem;
-}
-
-.actions button {
-   background: transparent;
-   border: none;
-   font-size: 1.1rem;
-   cursor: pointer;
+@media (max-width: 600px) {
+   .manga-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+   }
 }
 </style>
