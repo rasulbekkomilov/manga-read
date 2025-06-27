@@ -1,52 +1,98 @@
 <template>
    <div class="reader">
-      <h2>📖 {{ chapterSlug }}</h2>
-      <div v-if="pages.length > 0">
-         <img v-for="(page, i) in pages" :key="i" :src="page" class="page-img" />
+      <h1 class="chapter-title">{{ chapterTitle }}</h1>
+
+      <div v-if="error" class="error">{{ error }}</div>
+
+      <div v-else-if="pages.length > 0" class="pages">
+         <img v-for="(page, index) in pages" :key="index" :src="page" :alt="`Page ${index + 1}`" />
       </div>
-      <p v-else>⏳ Yuklanmoqda yoki bob topilmadi</p>
+
+      <div v-else class="loading">
+         ⏳ Yuklanmoqda yoki bob mavjud emas...
+      </div>
    </div>
 </template>
 
 <script setup>
-import { useRoute } from 'vue-router'
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { supabase } from '@/supabase'
 
 const route = useRoute()
-const chapterSlug = route.params.chapterSlug
-const mangaSlug = route.params.mangaSlug
-
 const pages = ref([])
+const chapterTitle = ref('')
+const error = ref(null)
 
 onMounted(async () => {
-   const { data: manga } = await supabase
-      .from('manga')
-      .select('id')
-      .eq('slug', mangaSlug)
+   const { chapterSlug } = route.params
+
+   const { data, error: fetchError } = await supabase
+      .from('chapters')
+      .select(`
+         pages,
+         number,
+         slug,
+         manga (
+            title,
+            slug
+         )
+      `)
+      .eq('slug', chapterSlug)
       .single()
 
-   if (manga) {
-      const { data: chapter } = await supabase
-         .from('chapters')
-         .select('pages')
-         .eq('slug', chapterSlug)
-         .eq('manga_id', manga.id)
-         .single()
-
-      if (chapter) {
-         pages.value = chapter.pages
-      }
+   if (fetchError || !data) {
+      error.value = '❌ Bob topilmadi yoki xatolik yuz berdi.'
+      return
    }
+
+   pages.value = data.pages
+   chapterTitle.value = `${data.manga.title} - ${data.number}-bob`
 })
 </script>
 
+
 <style scoped>
-.page-img {
+.reader {
+   max-width: 900px;
+   margin: 2rem auto;
+   padding: 1rem;
+   font-family: 'Segoe UI', sans-serif;
+}
+
+.chapter-title {
+   font-size: 1.8rem;
+   font-weight: bold;
+   text-align: center;
+   margin-bottom: 2rem;
+   color: #1f2937;
+}
+
+.error {
+   color: #dc2626;
+   text-align: center;
+   font-size: 1.1rem;
+   margin-top: 2rem;
+}
+
+.loading {
+   text-align: center;
+   font-size: 1.1rem;
+   color: #6b7280;
+   margin-top: 2rem;
+}
+
+.pages {
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+}
+
+.pages img {
    width: 100%;
-   max-width: 700px;
-   margin: 0 auto;
-   display: block;
-   margin-bottom: 1rem;
+   height: auto;
+   border-radius: 8px;
+   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+   object-fit: contain;
 }
 </style>

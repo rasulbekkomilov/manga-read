@@ -17,8 +17,8 @@
       <div class="recent-chapters">
          <h3>🆕 Oxirgi Yuklangan Boblar</h3>
          <div class="chapter-grid">
-            <router-link v-for="chapter in recentChapters" :key="chapter.id"
-               :to="`/read/${chapter.manga_id}/${chapter.id}`" class="chapter-card">
+            <router-link v-for="chapter in recentChapters" :key="chapter.id" :to="`/${chapter.manga_slug}/${chapter.slug}`"
+               class="chapter-card">
                <img :src="chapter.cover_url" alt="Manga cover" />
                <div class="info">
                   <span>{{ chapter.title }}</span>
@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { supabase } from '@/supabase'
 
 const totalManga = ref(0)
@@ -49,14 +49,14 @@ onMounted(async () => {
       .select('id', { count: 'exact', head: true })
    totalChapters.value = chapterCount
 
-   const { data: chapters, error } = await supabase
+   const { data, error } = await supabase
       .from('chapters')
       .select(`
          id,
+         slug,
          number,
-         manga_id,
-         created_at,
-         fk_manga_id (
+         manga (
+            slug,
             title,
             cover_url
          )
@@ -65,20 +65,20 @@ onMounted(async () => {
       .limit(10)
 
    if (error) {
-      console.error('Chapterlarni olishda xatolik:', error)
+      console.error('Xatolik:', error)
       return
    }
 
-   recentChapters.value = chapters.map(chap => ({
+   recentChapters.value = data.map(chap => ({
       id: chap.id,
+      slug: chap.slug,
       number: chap.number,
-      manga_id: chap.manga_id,
-      title: chap.fk_manga_id?.title || 'Nomaʼlum',
-      cover_url: chap.fk_manga_id?.cover_url || ''
+      title: chap.manga?.title || 'Nomaʼlum',
+      manga_slug: chap.manga?.slug || '',
+      cover_url: chap.manga?.cover_url || ''
    }))
 })
 </script>
-
 <style scoped>
 .dashboard {
    max-width: 1100px;
@@ -87,20 +87,31 @@ onMounted(async () => {
    font-family: 'Segoe UI', sans-serif;
 }
 
+h2 {
+   font-size: 2rem;
+   margin-bottom: 1.5rem;
+   color: #333;
+}
+
 .stats {
    display: flex;
    flex-wrap: wrap;
-   gap: 1rem;
+   gap: 1.5rem;
    margin-bottom: 2.5rem;
 }
 
 .stat-card {
    flex: 1 1 250px;
-   background: linear-gradient(to right, #f0f4ff, #e0eaff);
+   background: linear-gradient(135deg, #eef2ff, #dbeafe);
    padding: 1.5rem;
-   border-radius: 10px;
-   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+   border-radius: 12px;
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
    text-align: center;
+   transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+   transform: translateY(-4px);
 }
 
 .stat-card h3 {
@@ -112,7 +123,7 @@ onMounted(async () => {
 .stat-card p {
    font-size: 1.8rem;
    font-weight: bold;
-   color: #222;
+   color: #1f2937;
 }
 
 .recent-chapters {
@@ -121,39 +132,50 @@ onMounted(async () => {
 
 .recent-chapters h3 {
    margin-bottom: 1rem;
-   font-size: 1.4rem;
-   color: #333;
+   font-size: 1.5rem;
+   color: #1f2937;
 }
 
 .chapter-grid {
    display: grid;
-   grid-template-columns: repeat(5, 1fr);
+   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
    gap: 1rem;
 }
 
 .chapter-card {
-   background: #fff;
-   border: 1px solid #ddd;
-   border-radius: 8px;
+   background: #ffffff;
+   border: 1px solid #e5e7eb;
+   border-radius: 10px;
    overflow: hidden;
    text-decoration: none;
-   color: #333;
-   transition: transform 0.2s ease;
+   color: #111827;
+   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .chapter-card:hover {
    transform: translateY(-5px);
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .chapter-card img {
    width: 100%;
    height: 220px;
    object-fit: cover;
+   border-bottom: 1px solid #e5e7eb;
 }
 
 .chapter-card .info {
-   padding: 0.5rem;
+   padding: 0.6rem;
    text-align: center;
    font-weight: 500;
+   font-size: 0.95rem;
+}
+
+.chapter-card .info span {
+   display: block;
+   font-size: 1rem;
+   font-weight: 600;
+   color: #374151;
+   margin-bottom: 4px;
 }
 </style>
